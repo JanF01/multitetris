@@ -19,6 +19,7 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    private blocksX = [];
    private blocksY = [];
    private current: number = 0;
+   private gameInterval;
 
   private subscription: Subscription;
 
