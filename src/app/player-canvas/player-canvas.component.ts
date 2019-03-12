@@ -20,7 +20,6 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    private blocksY = [];
    private current: number = 0;
 
-
   private subscription: Subscription;
 
 
@@ -51,10 +50,16 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
         this.keyPress(e);
 
     });
+	
+	this.gameInterval = setInterval(function(){this.down();},500);
 
    }
 
-
+   down(){
+	   
+	 this.blocksY[this.current] += 40;  
+	   
+   }
 
    keyPress(event: KeyboardEvent){
 
