@@ -1,0 +1,16 @@
+
+
+@mixin border-r($s){
+border-radius:$s;
+-webkit-border-radius:$s;
+-moz-border-radius:$s;
+-ms-border-radius:$s;
+}
+
+
+canvas{
+    border: rgb(43, 148, 255) solid 0.5em;
+    @include border-r(1em);
+    height:700px;
+    margin-left:12%;
+}
