@@ -89,7 +89,8 @@ export class PlayerCanvasComponent implements OnInit {
      this.blockDSound = document.getElementById('blockDown');
      this.blockDSoundTwo = document.getElementById('blockTwo');
      this.lineWin = document.getElementById('lineWin');
-
+     this.soundtrack = document.getElementById('soundtrack');
+     this.soundtrack.play();
 
        this.canvas.nativeElement.style.display = "block";
        document.getElementsByTagName('button')[0].style.display = "none";
@@ -129,9 +130,6 @@ export class PlayerCanvasComponent implements OnInit {
    }
 
    ngOnInit(){
-
-    this.soundtrack = document.getElementById('soundtrack');
-    this.soundtrack.play();
 
 
     this.subscriptiond = fromEvent(document,'keydown').subscribe((e:KeyboardEvent) => {
