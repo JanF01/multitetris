@@ -11,6 +11,24 @@ border-radius:$s;
 canvas{
     border: rgb(43, 148, 255) solid 0.5em;
     @include border-r(1em);
-    height:700px;
-    margin-left:12%;
+    max-height:700px;
+    display:none;
+    margin-left:30%;
+}
+button{
+
+   background:#d4d4d4;
+
+   border:none;
+   height:2.7em;
+   width:9em;
+   font-size:1.1em;
+   box-shadow:0em 0.1em 0.8em 0em rgb(255, 255, 255);
+  margin-left:calc( 50% - 5.5em );
+  cursor:pointer;
+  transition: all 0.2s;
+}
+button:hover{
+    box-shadow:0em 0.1em 0.8em 0em rgb(0, 0, 0);
+     transform: scale(0.95);
 }

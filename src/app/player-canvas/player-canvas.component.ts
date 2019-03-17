@@ -1,4 +1,4 @@
-import { Component, Input, AfterViewInit, OnInit,  ViewChild, ElementRef} from '@angular/core';
+import { Component, Input, OnInit,  ViewChild, ElementRef} from '@angular/core';
 import { Subscription, fromEvent, TimeInterval } from 'rxjs';
 
 @Component({
@@ -6,7 +6,7 @@ import { Subscription, fromEvent, TimeInterval } from 'rxjs';
   templateUrl: './player-canvas.component.html',
   styleUrls: ['./player-canvas.component.scss']
 })
-export class PlayerCanvasComponent implements AfterViewInit, OnInit {
+export class PlayerCanvasComponent implements OnInit {
   
    @ViewChild('canvas') public canvas: ElementRef;
 
@@ -15,13 +15,18 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    @Input() private height = 700;
 
 
+
+  private font = "18px 'Press Start 2P'";
+
    private x = 10;
    private y = 20;
    private grid = [];
    private blockSize = 35;
    private blockAmount = 0;
    private current = [];
+   private hold = [];
    private nextBlock = [];
+   private pointCumulator = 0;
    private points = 0;
    private shapes = [
       [0,0,0,0,
@@ -52,6 +57,7 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
 
    private end: boolean = false;
    private s = 4;
+   private sNext = 4;
    private currentX: number = 0;
    private currentY: number = 0;
    private currentType: number = 0;
@@ -60,7 +66,8 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    private gameSpeed: number = 800;
    private keyInterval;
    private downInterval;
-   private lineOut;
+   private bdown = false;
+   private animationStop = 0;
 
   private subscriptiond: Subscription;
   private subscriptionu: Subscription;
@@ -71,15 +78,31 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    private context: CanvasRenderingContext2D;
 
 
+  private blockDSound;
+  private blockDSoundTwo;  
+  private soundtrack;
+  private lineWin;
+  private turn = 0;
 
-     ngAfterViewInit(){
+     createCanvas(){
+      
+     this.blockDSound = document.getElementById('blockDown');
+     this.blockDSoundTwo = document.getElementById('blockTwo');
+     this.lineWin = document.getElementById('lineWin');
+
+
+       this.canvas.nativeElement.style.display = "block";
+       document.getElementsByTagName('button')[0].style.display = "none";
+
       const canvas: HTMLCanvasElement = this.canvas.nativeElement;
       this.context = canvas.getContext('2d');
 
       canvas.width = this.width;
       canvas.height = this.height;
       this.context.lineWidth = 3;
-
+      
+      this.context.font = this.font;
+  
   
       this.context.fillStyle = "#004";
     this.context.fillRect(this.width-150,0,this.width,this.height);
@@ -87,24 +110,28 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
      this.context.fillStyle = "rgb(43, 148, 255)";
     this.context.fillRect(this.width-150,0,8,this.height);
     this.context.fillRect(this.width-150,0,150,22);
-    this.context.fillRect(this.width-150,22+this.height/4,150,22);
+    this.context.fillRect(this.width-150,22+this.height/4,150,26);
  
 
-    this.context.font = "18px 'Press Start 2P'";
     this.context.textAlign = 'center';
-    this.context.fillStyle =  this.context.fillStyle = "rgb(0,0,0)";
 
-    this.context.fillText("NEXT",this.width-71,18,60);
-    this.context.fillText("POINTS",this.width-71,this.height/4 + 43,60);
+    this.context.fillStyle = "rgb(0,0,0)";
 
-    this.context.fillStyle =  this.context.fillStyle = "rgb(13, 208, 255)";
-    this.context.fillText(this.points.toString(),this.width-71,this.height/4 + 90,60);
+    this.context.fillText("NEXT",this.width-71,18,120);
+    this.context.fillText("POINTS",this.width-71,this.height/4 + 45,100);
+
+    this.context.fillStyle = "rgb(13, 208, 255)";
+    this.context.fillText(this.points.toString(),this.width-71,this.height/4 + 93,120);
 
     this.context.fillStyle = "#000";
       this.startGame();
+
    }
 
    ngOnInit(){
+
+    this.soundtrack = document.getElementById('soundtrack');
+    this.soundtrack.play();
 
 
     this.subscriptiond = fromEvent(document,'keydown').subscribe((e:KeyboardEvent) => {
@@ -130,6 +157,9 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
 
     this.initializeGrid();
 
+
+
+    this.nextShape();
   
 
      this.newBlock();
@@ -141,22 +171,21 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
     this.downInterval = setInterval(()=>this.down(),this.gameSpeed);
 
    }
+
+
+   endGame(){
+    clearInterval(this.keyInterval);
+    clearInterval(this.downInterval);
+    this.subscriptionc.unsubscribe();
+    this.subscriptiond.unsubscribe();
+    this.subscriptionu.unsubscribe();
+   }
    
 
    newBlock(){
 
    
-      if(this.blockAmount%(this.shapes.length/2)==0){
-        
-        this.randomBag = Array.from(this.shapes);
-      this.bagU=[0,0];
-      this.currentType = Math.floor(Math.random()*this.randomBag.length/2);
-      this.nextBlock = this.randomBag[this.currentType*2];
-      }
-      else{
-       this.currentType = this.nextType;
-       this.nextBlock = this.randomBag[this.currentType*2];
-      }
+      this.animationStop=0;
     
      this.blockAmount++;
  
@@ -169,22 +198,9 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
 
   
       this.nextType = Math.floor(Math.random()*this.randomBag.length/2);
-      this.drawMenu();
+ 
       
-
-     if(this.currentType==0 && !this.bagU[0]){
-      this.s = 4;
-      this.bagU[0]=1;
-     }
-     else if( ( this.currentType==1 && !this.bagU[0] && !this.bagU[1] ) || ( this.currentType==0 && this.bagU[0] && !this.bagU[1] ) ){
-      this.s = 4;
-      this.bagU[1]=1;
-     }
-     else{
-       this.s = 3;
-     }
-
-
+     this.s = this.sNext;
 
  
 
@@ -203,7 +219,29 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
     }
     this.current = shape;
    
+
+    this.nextShape();
+
    }
+
+   setSize(){
+
+    if(this.currentType==0 && !this.bagU[0]){
+  
+        this.bagU[0]=1;
+      return 4;
+     }
+     else if( ( this.currentType==1 && !this.bagU[0] && !this.bagU[1] ) || ( this.currentType==0 && this.bagU[0] && !this.bagU[1] ) ){
+      this.bagU[1]=1;
+      return 4;
+     }
+     else{
+      return 3;
+     }
+
+   }
+
+
 
    initializeGrid(){
       for(let i=0;i<this.y;i++){
@@ -218,24 +256,54 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
 
    down(){
 
-  
+   if(this.gameSpeed<100){
+     this.endGame();
+   }
    if(this.checkAround(0,1)){
     this.currentY++;
    }
    else{
          this.blockStop();
          if(this.end){
-           clearInterval(this.keyInterval);
-           clearInterval(this.downInterval);
+           this.endGame();
          }
          else{
-       this.newBlock();
+    
+          if(!this.turn){
+          this.blockDSound.play();
+          this.turn=1;
+          }
+          else{
+            this.blockDSoundTwo.play();
+            this.turn=0;
+          }
+          setTimeout(()=>{
+          this.newBlock();
+          
+          },this.animationStop);
          }
-
+         this.bdown=true;
+    
+   }
+    setTimeout(()=>{
+    this.drawAll();
+   },this.animationStop);
+   
 
    }
-   this.drawAll();
-   
+
+   fullDown(){
+
+       let b = this.current;
+      this.bdown=false;
+       while(!this.bdown){
+           this.down();
+           this.pointCumulator+=3;
+       }
+
+       this.points+=this.pointCumulator;
+        this.pointCumulator= 0;
+
 
    }
 
@@ -244,6 +312,7 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
     switch (event.code){
       case 'ArrowDown':{
         this.keys[0] = 1;
+        this.pointCumulator++;
     break;
       }
     }
@@ -267,11 +336,11 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    
     if(this.keys[0]){
            this.down();
-       
+           this.pointCumulator++;
           }
 
-
      this.drawAll();
+ 
 
    }
 
@@ -296,9 +365,13 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
             let rotated = this.rotation(this.current);
             if(this.checkAround(0,0,rotated)){
              this.current = rotated;
-             this.down();
             }
+            break;
           }
+          case "Space":{
+          this.fullDown();
+          }
+          break;
         }
 
 
@@ -318,7 +391,10 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
    }
 
 
+
    blockStop(){
+     this.points+=this.pointCumulator;
+     this.pointCumulator=0;
     for(let y=0;y<this.s;y++){
       for(let x=0;x<this.s;x++){
         if(this.current[y][x]){
@@ -331,24 +407,38 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
     }
 
      this.checkLines();
+     this.drawPoints();
    }
 
   checkLines(){
-   let combo = 10;
-    for(let i=this.currentY+this.s-1;i>=this.currentY;i--){
-      combo = this.checkForLine(i,combo);
+   let combo = [80,0];
 
+   for(let i=this.currentY;i<this.currentY+this.s;i++){
+      combo = this.checkForLine(i,combo[0],0);
+   }
+ 
+    if(combo[0]!=80){
+
+    this.lineWin.play();
+
+    this.points+=Math.round(combo[0]);
+
+    this.animationStop=200;
+
+    this.gameSpeed-=12;
+
+
+    clearInterval(this.downInterval);
+
+    setTimeout(()=>{
+    this.downInterval = setInterval(()=>this.down(),this.gameSpeed);
+    },this.animationStop);
+  
     }
-    if(combo!=10){
-    this.points+=Math.round(combo);
-    this.context.fillStyle = "#004";
-    this.context.fillRect(this.width-142,55+this.height/4,150,50);
-    this.context.fillStyle = "rgb(49, 180, 255)";
-    this.context.fillText(this.points.toString(),this.width-71,this.height/4 + 90,60);
-    }
+
   }
 
-  checkForLine(i,c){
+  checkForLine(i,c,l){
     if(i<this.y){
       let line = true;
        for(let x=0;x<this.x;x++){
@@ -356,29 +446,37 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
              line = false;
            }
           }
+
        if(line){
-         this.gameSpeed-=10;
-         clearInterval(this.downInterval);
-         c*=2.5;
-         this.destroyLine(i);
-         this.downInterval = setInterval(()=>this.down(),this.gameSpeed);
-         c = this.checkForLine(i,c);
+
+         l+=1;
+        c*=3.2;
+        this.destroyLine(i);
+        let arr = this.checkForLine(i,c,l);
+
+        c = arr[0];
+        l = arr[1];
        }
        else{
-       return c;
+       return [c,l];
        }
   
   }
-  return c;
+
+       return [c,l];
 }
 
   destroyLine(y){
     
      for(let x=0;x<this.x;x++){
       this.grid[y][x][0] = 0;
-         this.grid[y][x][1] = "#ff8";
+         this.grid[y][x][1] = "#FFF";
         
      }
+
+     this.drawAll(y);
+
+  setTimeout(()=>{   
     let newGrid = [];
      
      for(let o=y;o>=1;o--){
@@ -398,9 +496,10 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
          newGrid[j][x] = [this.grid[j][x][0],this.grid[j][x][1]];
        }
 
-     }
+  
+         }
      this.grid = newGrid;
-
+        },600);
   }
 
   checkAround(xPos = 0,yPos = 0,current = this.current){
@@ -420,7 +519,7 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
           || y + yPos >= this.y){
             if(yPos == 1 && xPos - this.currentX === 0 && yPos - this.currentY === 1){
 
-             console.log('You lost');
+            
              this.end = true;
             }
             return false;
@@ -435,29 +534,52 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
 
 
 
-  drawMenu(){
- 
+  nextShape(){
+
+    let color = "";
+
+    if(this.randomBag.length<1){
+        
+      this.randomBag = Array.from(this.shapes);
+    this.bagU=[0,0];
+    this.currentType = Math.floor(Math.random()*this.randomBag.length/2);
+    }
+   else{    
+      this.currentType = this.nextType;
+    }
+
+    this.nextBlock = this.randomBag[this.currentType*2];
+    color = this.randomBag[this.currentType*2+1];
     this.context.fillStyle = "#004";
     this.context.fillRect(this.width-142,22,140,this.height/4);
 
-  
+    this.sNext = this.setSize();
    
-    this.context.fillStyle = "#A04";
-  //  for(let y=0;y<4;y++){
-  //   for(let x=0;x<4;x++){
-  //     if(typeof this.randomBag[this.nextType*2][y] !== 'undefined'
-  //       && typeof this.randomBag[this.nextType*2][y][x] !=='undefined'
-  //       && this.randomBag[this.nextType*2][y][x]){
-  //      this.context.fillRect((14 + x)*(this.blockSize-8),(2 + y)*(this.blockSize-8),this.blockSize-10,this.blockSize-10);
-  //    }
-  //   } 
-  //  }
+    this.context.fillStyle = color;
+    for(let y=0;y<this.sNext;y++){
+    for(let x=0;x<this.sNext;x++){
+      let grid = y * this.sNext + x;
+       if(typeof this.nextBlock[grid] !== 'undefined'
+          && this.nextBlock[grid]){
+        this.context.fillRect((12.5 + x)*(this.blockSize-5),(2 + y)*(this.blockSize-5),this.blockSize-7,this.blockSize-7);
+      }
+     } 
+    }
+  }
+
+  drawPoints(){
+    this.context.fillStyle = "#004";
+    this.context.fillRect(this.width-142,55+this.height/4,150,50);
+    this.context.fillStyle = "rgb(49, 180, 255)";
+    this.context.fillText(this.points.toString(),this.width-71,this.height/4 + 93,120);
   }
  
-  drawAll(){
-   
+  drawAll(z=null){
+   console.log(z);
+    
     this.context.fillStyle = "#333";
     this.context.fillRect(2,0,this.width - 150,this.height);
+
    
     for(let i = 0;i < this.grid.length;i++){
       for(let j =0;j<this.grid[i].length;j++){
@@ -467,19 +589,26 @@ export class PlayerCanvasComponent implements AfterViewInit, OnInit {
       }
     }
 
-    this.context.fillStyle = this.blockColor;
-   for(let y=0;y<this.s;y++){
+
+    for(let y=0;y<this.s;y++){
       for(let x=0;x<this.s;x++){
          if(this.current[y][x]){
+           if((typeof this.grid[this.currentY+y][this.currentX-1] !== 'undefined' && this.grid[this.currentY+y][this.currentX-1][1]=="#FFF")
+           || ( typeof this.grid[this.currentY+y][this.currentX+5] !== 'undefined' && this.grid[this.currentY+y][this.currentX+5][1]=="#FFF")){
+
+            this.context.fillStyle = "#FFF";
+           }else{
+            this.context.fillStyle = this.blockColor;
+           }
              this.context.fillRect((this.currentX + x)*this.blockSize+2,(this.currentY + y)*this.blockSize,this.blockSize-2,this.blockSize-2);
         
          }
       }
 
    }
-
-
-
-  }
+   
 
   }
+
+
+}
